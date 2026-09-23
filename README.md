@@ -6,12 +6,16 @@ A machine learning project that classifies news articles as **real or fake** usi
 
 ## 📊 Results
 
+Numbers below are on the deduplicated dataset (63,557 rows, after dropping exact-duplicate `title+text` rows — see the Data Leakage section below).
+
 | Version | Accuracy |
 |---|---|
-| Title only, unigrams | 89.38% |
-| Title only, bigrams + Naive Bayes | 86.98% |
-| Title only, bigrams + Logistic Regression | 89.30% |
-| **Title + Text, bigrams + Logistic Regression** | **95.76%** |
+| Title only, bigrams + Logistic Regression | 88.91% |
+| Title + Text, bigrams + Naive Bayes | 86.27% |
+| **Title + Text, bigrams + Logistic Regression** | **95.22%** |
+| Title + Text, bigrams + LR, source/format tokens removed | 93.54% |
+
+The original (non-deduplicated) split reports 95.76%, but that number is inflated by train/test leakage — see below.
 
 ---
 
@@ -19,8 +23,14 @@ A machine learning project that classifies news articles as **real or fake** usi
 
 - **Name:** WELFake Dataset
 - **Source:** [Kaggle](https://www.kaggle.com/datasets/saurabhshahane/fake-news-classification)
-- **Size:** ~72,000 labeled news articles
-- **Labels:** `0` = Fake, `1` = Real
+- **Size:** ~72,000 labeled news articles (63,557 after removing exact duplicates)
+- **Labels:** `0` = Real, `1` = Fake — verified by inspecting sampled article titles per label, not assumed from the raw column name
+
+---
+
+## ⚠️ Data Leakage
+
+16,528 rows sit in duplicate groups on the cleaned `title+text` field (7,951 groups); deduplicating (keep first) removes 8,577 rows, taking the dataset from 72,134 to 63,557 rows. Under a random 80/20 split with `random_state=42` on the non-deduplicated data, 2,656 of the 14,427 test rows (18.4%) had an exact duplicate sitting in the training set — the model could partly memorize rather than generalize. The notebook now deduplicates before splitting; accuracy drops from 95.76% (leaky) to 95.22% (deduped), which is the number reported here.
 
 ---
 
@@ -70,15 +80,35 @@ news-headline-classifier/
 2. **Feature Engineering** — Title and article text are combined into a single input field
 3. **Vectorization** — TF-IDF with bigrams (`ngram_range=(1,2)`) and top 10,000 features
 4. **Model** — Logistic Regression (`max_iter=1000`)
-5. **Evaluation** — 80/20 train-test split, accuracy + classification report
+5. **Evaluation** — 80/20 train-test split (deduplicated first), accuracy + classification report
 
 ---
 
 ## 💡 Key Findings
 
-- **Feature engineering > model selection** — switching from title-only to title+text gave a +6.4% accuracy jump with no model change
+- **Feature engineering > model selection** — switching from title-only to title+text gave a +6.3 point accuracy jump with no model change
 - **Naive Bayes underperformed** Logistic Regression on this dataset — LR handles the richer feature interactions in full articles better
-- **Bigrams helped marginally** on full text but made no difference on headlines alone
+- **Deduplication matters** — 18.4% of the test set leaked from the training set under the naive split; the honest accuracy is 95.22%, not 95.76%
+
+---
+
+## 🧠 What the Model Actually Learned
+
+Inspecting the top 20 highest/lowest `LogisticRegression` coefficients shows the model leans heavily on **source and formatting artifacts**, not just article content:
+
+- Tokens pushing toward **Fake**: `via`, `video`, `image`, `image via`, `hillary`, `breaking`, `trump`, `obama`, `fbi`, `wire`, `share`
+- Tokens pushing toward **Real**: `reuters`, `said`, `breitbart`, `washington reuters`, `twitter`, `follow`, `york times`, weekday names (`thursday`, `friday`, `tuesday`, `monday`)
+
+Removing a fixed list of 38 source/format tokens reduces accuracy from 95.22% to 93.54% — about 1.7 points of the model's accuracy comes from recognizing wire-service bylines and formatting conventions (e.g. "Washington (Reuters) — ...") rather than the substance of the claims.
+
+After ablation, the top tokens shift toward more content-bearing words, but outlet style is still present:
+
+- Pushing toward **Fake**: `hillary`, `obama`, `trump`, `however`, `america`, `watch`, `entire`, `today`, `president trump`, `fbi`, `even`, `please`, `dc`, `yearold`, `flickr`, `article`, `fact`, `mosul`, `know`, `photo`
+- Pushing toward **Real**: `said`, `breitbart`, `president donald`, `trumps`, `https`, `thats`, `us president`, `dont`, `said statement`, `mr`, `im`, `new`, `theres`, `hes`, `didnt`, `ms`, `spokesman`, `islamic state`, `doesnt`, `partys`
+
+So the remaining signal is more content-driven (`hillary`, `trump`, `fbi`, `said`), but still partly outlet style — `breitbart` and `said statement` push toward Real, not toward factuality.
+
+**Caveats not addressed here:** the NLTK stopword list strips negations (`not`, `no`), which can flip the meaning of a sentence before the model ever sees it; and the cleaning regex strips all digits, discarding dates, percentages, and counts that could be genuine signal.
 
 ---
 
