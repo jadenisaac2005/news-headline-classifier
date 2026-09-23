@@ -99,14 +99,14 @@ Inspecting the top 20 highest/lowest `LogisticRegression` coefficients shows the
 - Tokens pushing toward **Fake**: `via`, `video`, `image`, `image via`, `hillary`, `breaking`, `trump`, `obama`, `fbi`, `wire`, `share`
 - Tokens pushing toward **Real**: `reuters`, `said`, `breitbart`, `washington reuters`, `twitter`, `follow`, `york times`, weekday names (`thursday`, `friday`, `tuesday`, `monday`)
 
-Removing a fixed list of 38 source/format tokens reduces accuracy from 95.22% to 93.54% — about 1.7 points of the model's accuracy comes from recognizing wire-service bylines and formatting conventions (e.g. "Washington (Reuters) — ...") rather than the substance of the claims.
+Removing a fixed list of 38 source/format tokens reduces accuracy from 95.22% to 93.54%. Removing them costs only 1.7 points — not because the model barely used them, but because it falls back on other stylistic cues that carry the same information.
 
-After ablation, the top tokens shift toward more content-bearing words, but outlet style is still present:
+After ablation, the top tokens shift, but outlet style is still present:
 
 - Pushing toward **Fake**: `hillary`, `obama`, `trump`, `however`, `america`, `watch`, `entire`, `today`, `president trump`, `fbi`, `even`, `please`, `dc`, `yearold`, `flickr`, `article`, `fact`, `mosul`, `know`, `photo`
 - Pushing toward **Real**: `said`, `breitbart`, `president donald`, `trumps`, `https`, `thats`, `us president`, `dont`, `said statement`, `mr`, `im`, `new`, `theres`, `hes`, `didnt`, `ms`, `spokesman`, `islamic state`, `doesnt`, `partys`
 
-So the remaining signal is more content-driven (`hillary`, `trump`, `fbi`, `said`), but still partly outlet style — `breitbart` and `said statement` push toward Real, not toward factuality.
+The post-ablation features are still house style rather than claims: how people are named (`hillary`, `president trump` vs `president donald`, `us president`, `mr`, `ms`), attribution language (`said`, `said statement`, `spokesman`), and captions or calls to action (`watch`, `photo`, `flickr`, `please`). Tokens like `https`, `yearold`, and apostrophe-stripped contractions (`thats`, `dont`) are artifacts of the cleaning step.
 
 **Caveats not addressed here:** the NLTK stopword list strips negations (`not`, `no`), which can flip the meaning of a sentence before the model ever sees it; and the cleaning regex strips all digits, discarding dates, percentages, and counts that could be genuine signal.
 
