@@ -23,7 +23,7 @@ The original (non-deduplicated) split reports 95.76%, but that number is inflate
 
 - **Name:** WELFake Dataset
 - **Source:** [Kaggle](https://www.kaggle.com/datasets/saurabhshahane/fake-news-classification)
-- **Size:** ~72,000 labeled news articles (63,557 after removing exact duplicates)
+- **Size:** 72,134 labeled news articles (63,557 after removing 8,577 exact duplicates)
 - **Labels:** `0` = Real, `1` = Fake — verified by inspecting sampled article titles per label, not assumed from the raw column name
 
 ---
